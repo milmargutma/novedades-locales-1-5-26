@@ -29,6 +29,7 @@ export default function App() {
   const [news, setNews] = useState<News[]>([]);
   const [isEditing, setIsEditing] = useState<News | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [viewingNews, setViewingNews] = useState<News | null>(null);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const lastNewsCount = useRef<number>(0);
@@ -280,12 +281,13 @@ export default function App() {
                         <th className="px-6 py-4 font-semibold">Título / Descripción</th>
                         <th className="px-6 py-4 font-semibold">Alcance</th>
                         <th className="px-6 py-4 font-semibold">Vigencia</th>
+                        <th className="px-6 py-4 font-semibold">Adjunto</th>
                         <th className="px-6 py-4 font-semibold text-right">Acciones</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-sm bg-white">
                       {filteredNews.map((item) => (
-                        <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                        <tr key={item.id} onDoubleClick={() => setViewingNews(item)} className="hover:bg-slate-50/50 transition-colors cursor-pointer">
                           <td className="px-6 py-4">
                             {item.priority === 'roja' && (
                               <span className="flex items-center gap-1.5 text-rose-600 font-medium">
@@ -315,6 +317,14 @@ export default function App() {
                           <td className="px-6 py-4 text-slate-500 font-mono text-xs">
                             {format(parseISO(item.startDate), 'dd/MM')} — {format(parseISO(item.endDate), 'dd/MM')}
                           </td>
+                          <td className="px-6 py-4">
+                            {item.attachmentUrl && (
+                              <a href={item.attachmentUrl} download={item.attachmentName || 'adjunto'} onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg transition-colors">
+                                <Paperclip className="w-3.5 h-3.5" />
+                                <span>Adjunto</span>
+                              </a>
+                            )}
+                          </td>
                           <td className="px-6 py-4 text-right">
                             <button onClick={() => setIsEditing(item)} className="text-slate-400 hover:text-indigo-600 mx-2 transition-colors">
                               <Edit className="w-4 h-4" />
@@ -343,7 +353,7 @@ export default function App() {
           {role !== 'administracion' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredNews.filter(n => isActiveAndForRole(n, role)).map(item => (
-                <div key={item.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col group hover:shadow-md transition-shadow">
+                <div key={item.id} onDoubleClick={() => setViewingNews(item)} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col group hover:shadow-md transition-all cursor-pointer">
                   <div className="flex justify-between items-start mb-4 gap-4">
                     <h3 className="text-base font-semibold text-slate-900 leading-tight">{item.title}</h3>
                     <div className="shrink-0 pt-0.5">
@@ -377,7 +387,7 @@ export default function App() {
                       </span>
                     </div>
                     {item.attachmentUrl && (
-                      <a href={item.attachmentUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 rounded-lg text-xs font-medium transition-colors">
+                      <a href={item.attachmentUrl} download={item.attachmentName || 'adjunto'} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 rounded-lg text-xs font-medium transition-colors">
                         <Paperclip className="w-3.5 h-3.5" />
                         <span>Adjunto</span>
                       </a>
@@ -404,6 +414,68 @@ export default function App() {
           onClose={() => { setIsCreating(false); setIsEditing(null); }}
           onSaved={() => { setIsCreating(false); setIsEditing(null); }}
         />
+      )}
+
+      {viewingNews && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setViewingNews(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-xl flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-slate-100 flex justify-between items-start gap-4">
+              <div>
+                <h2 className="text-2xl font-semibold text-slate-900 mb-2">{viewingNews.title}</h2>
+                <div className="flex flex-wrap gap-2 text-sm text-slate-500">
+                  <span className="flex items-center gap-1">
+                    <Store className="w-4 h-4" />
+                    Target: <span className="font-medium text-slate-700 capitalize">{viewingNews.target}</span>
+                  </span>
+                  <span>•</span>
+                  <span>
+                    Del {format(new Date(viewingNews.startDate), "d MMM", { locale: es })}
+                    {' '}al {format(new Date(viewingNews.endDate), "d MMM yyyy", { locale: es })}
+                  </span>
+                </div>
+              </div>
+              <div className="shrink-0 flex items-center gap-2">
+                 {viewingNews.priority === 'roja' && <span className="px-2.5 py-1 bg-rose-100 text-rose-700 rounded-md text-xs font-medium uppercase tracking-wider">Alta</span>}
+                 {viewingNews.priority === 'amarilla' && <span className="px-2.5 py-1 bg-amber-100 text-amber-700 rounded-md text-xs font-medium uppercase tracking-wider">Media</span>}
+                 {viewingNews.priority === 'verde' && <span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-md text-xs font-medium uppercase tracking-wider">Baja</span>}
+              </div>
+            </div>
+            
+            <div className="p-6 overflow-y-auto">
+              <div className="prose prose-slate max-w-none mb-8">
+                <p className="whitespace-pre-wrap text-slate-600 leading-relaxed text-base">{viewingNews.description}</p>
+              </div>
+
+              {viewingNews.attachmentUrl && (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mt-6">
+                  <p className="text-sm font-medium text-slate-900 mb-2">Archivos Adjuntos</p>
+                  <a 
+                    href={viewingNews.attachmentUrl} 
+                    download={viewingNews.attachmentName || 'adjunto'}
+                    className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:shadow-sm transition-all group w-fit"
+                  >
+                    <div className="p-2 bg-indigo-50 text-indigo-600 rounded-md group-hover:bg-indigo-100 transition-colors">
+                      <Paperclip className="w-4 h-4" />
+                    </div>
+                    <span className="text-sm font-medium text-slate-700 group-hover:text-indigo-600 transition-colors">
+                      {viewingNews.attachmentName || 'Descargar Adjunto'}
+                    </span>
+                    <Download className="w-4 h-4 text-slate-400 ml-2 group-hover:text-indigo-500" />
+                  </a>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end rounded-b-2xl">
+              <button
+                onClick={() => setViewingNews(null)}
+                className="px-6 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 font-medium transition-colors focus:ring-2 focus:ring-slate-200 focus:outline-none"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
