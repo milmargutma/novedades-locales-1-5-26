@@ -371,45 +371,34 @@ export default function App() {
 
           {/* User Cards View */}
           {role !== 'administracion' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="flex flex-col gap-4">
               {filteredNews.filter(n => isActiveAndForRole(n, role)).map(item => (
-                <div key={item.id} onDoubleClick={() => setViewingNews(item)} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col group hover:shadow-md transition-all cursor-pointer">
-                  <div className="flex justify-between items-start mb-4 gap-4">
-                    <h3 className="text-base font-semibold text-slate-900 leading-tight">{item.title}</h3>
-                    <div className="shrink-0 pt-0.5">
-                      {item.priority === 'roja' && (
-                         <span className="flex items-center gap-1.5 bg-rose-50 text-rose-600 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider">
-                           <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span> Alta
-                         </span>
-                      )}
-                      {item.priority === 'amarilla' && (
-                         <span className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider">
-                           <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span> Media
-                         </span>
-                      )}
-                      {item.priority === 'verde' && (
-                         <span className="flex items-center gap-1.5 bg-emerald-50 text-emerald-600 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider">
-                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> Baja
-                         </span>
-                      )}
+                <div key={item.id} onDoubleClick={() => setViewingNews(item)} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-col md:flex-row md:items-center justify-between group hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer gap-4">
+                  <div className="flex items-start gap-4 flex-1">
+                    <div className="shrink-0 pt-1.5">
+                      {item.priority === 'roja' && <span className="w-2.5 h-2.5 rounded-full bg-rose-500 block ring-4 ring-rose-50"></span>}
+                      {item.priority === 'amarilla' && <span className="w-2.5 h-2.5 rounded-full bg-amber-500 block ring-4 ring-amber-50"></span>}
+                      {item.priority === 'verde' && <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 block ring-4 ring-emerald-50"></span>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-semibold text-slate-900 truncate mb-1">{item.title}</h3>
+                      <p className="text-slate-500 text-sm line-clamp-2 leading-relaxed">
+                        {item.description}
+                      </p>
                     </div>
                   </div>
                   
-                  <p className="text-slate-600 text-sm whitespace-pre-wrap mb-6 flex-1 leading-relaxed">
-                    {item.description}
-                  </p>
-                  
-                  <div className="pt-4 border-t border-slate-100 flex items-center justify-between mt-auto">
+                  <div className="flex items-center gap-6 shrink-0 md:pl-6 md:border-l border-slate-100 mt-2 md:mt-0">
                     <div className="flex flex-col">
-                      <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Vencimiento</span>
+                      <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Vence</span>
                       <span className="text-xs text-slate-700 font-medium mt-0.5">
-                        {format(parseISO(item.endDate), "d MMM yyyy", { locale: es })}
+                        {format(parseISO(item.endDate), "d MMM", { locale: es })}
                       </span>
                     </div>
                     {item.attachmentUrl && (
-                      <a href={item.attachmentUrl} download={item.attachmentName || 'adjunto'} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 rounded-lg text-xs font-medium transition-colors">
+                      <a href={item.attachmentUrl} download={item.attachmentName || 'adjunto'} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 rounded-lg text-xs font-medium transition-colors border border-slate-100">
                         <Paperclip className="w-3.5 h-3.5" />
-                        <span>Adjunto</span>
+                        <span className="hidden sm:inline">Adjunto</span>
                       </a>
                     )}
                   </div>
