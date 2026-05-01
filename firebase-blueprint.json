@@ -1,0 +1,27 @@
+{
+  "entities": {
+    "News": {
+      "title": "News",
+      "description": "Represents a news item",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "priority": { "type": "string", "enum": ["verde", "amarilla", "roja"] },
+        "target": { "type": "string", "enum": ["local 4", "local 9", "administracion", "todos"] },
+        "attachmentUrl": { "type": "string" },
+        "attachmentName": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["title", "description", "startDate", "endDate", "priority", "target", "createdAt"]
+    }
+  },
+  "firestore": {
+    "news": {
+      "schema": { "$ref": "#/entities/News" },
+      "description": "Stores news items"
+    }
+  }
+}

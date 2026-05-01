@@ -3,6 +3,8 @@ import { format, isWithinInterval, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
 import { Bell, BellOff, Edit, Trash2, Plus, Download, Store, Shield, Paperclip, ChevronRight, LayoutDashboard, LogOut, FileText } from 'lucide-react';
+import { db, handleFirestoreError, OperationType } from './lib/firebase';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDocs } from 'firebase/firestore';
 
 type Priority = 'verde' | 'amarilla' | 'roja';
 type TargetLocal = 'local 4' | 'local 9' | 'administracion' | 'todos';
@@ -31,14 +33,12 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const lastNewsCount = useRef<number>(0);
 
-  // Poll database to get the latest news
-  const fetchNews = async () => {
-    try {
-      const res = await fetch('/api/news');
-      const data: News[] = await res.json();
+  // Read from Firebase in real-time
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'news'), (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as News[];
       setNews(data);
       
-      // Trigger notification if new active news arrived
       if (data.length > lastNewsCount.current && lastNewsCount.current !== 0) {
         if (Notification.permission === 'granted' && role) {
           const newItems = data.slice(lastNewsCount.current);
@@ -52,15 +52,11 @@ export default function App() {
         }
       }
       lastNewsCount.current = data.length;
-    } catch (err) {
-      console.error(err);
-    }
-  };
+    }, (error) => {
+        handleFirestoreError(error, OperationType.LIST, 'news');
+    });
 
-  useEffect(() => {
-    fetchNews();
-    const interval = setInterval(fetchNews, 5000);
-    return () => clearInterval(interval);
+    return () => unsubscribe();
   }, [role]);
 
   const requestNotificationPermission = () => {
@@ -70,6 +66,16 @@ export default function App() {
           setPushEnabled(true);
         }
       });
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('¿Eliminar novedad permanentemente?')) {
+      try {
+        await deleteDoc(doc(db, 'news', id));
+      } catch (err) {
+        handleFirestoreError(err, OperationType.DELETE, `news/${id}`);
+      }
     }
   };
 
@@ -312,12 +318,7 @@ export default function App() {
                             <button onClick={() => setIsEditing(item)} className="text-slate-400 hover:text-indigo-600 mx-2 transition-colors">
                               <Edit className="w-4 h-4" />
                             </button>
-                            <button onClick={async () => {
-                               if(confirm('¿Eliminar novedad permanentemente?')) {
-                                 await fetch(`/api/news/${item.id}`, { method: 'DELETE' });
-                                 fetchNews();
-                               }
-                            }} className="text-slate-400 hover:text-rose-600 mx-2 transition-colors">
+                            <button onClick={() => handleDelete(item.id)} className="text-slate-400 hover:text-rose-600 mx-2 transition-colors">
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </td>
@@ -400,7 +401,7 @@ export default function App() {
         <NewsFormModal
           news={isEditing}
           onClose={() => { setIsCreating(false); setIsEditing(null); }}
-          onSaved={() => { setIsCreating(false); setIsEditing(null); fetchNews(); }}
+          onSaved={() => { setIsCreating(false); setIsEditing(null); }}
         />
       )}
     </div>
@@ -428,15 +429,19 @@ function NewsFormModal({ news, onClose, onSaved }: { news: News | null, onClose:
       let attachmentName = formData.attachmentName;
 
       if (file) {
-        const fileData = new FormData();
-        fileData.append('file', file);
-        const uploadRes = await fetch('/api/upload', {
-          method: 'POST',
-          body: fileData
+        if (file.size > 800000) {
+            alert('El archivo es demasiado grande. El máximo permitido es 800KB.');
+            setLoading(false);
+            return;
+        }
+        const toBase64 = (f: File) => new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(f);
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = error => reject(error);
         });
-        const uploadResData = await uploadRes.json();
-        attachmentUrl = uploadResData.url;
-        attachmentName = uploadResData.name;
+        attachmentUrl = await toBase64(file);
+        attachmentName = file.name;
       }
 
       const body = {
@@ -444,26 +449,18 @@ function NewsFormModal({ news, onClose, onSaved }: { news: News | null, onClose:
         startDate: format(new Date(formData.startDate!), "yyyy-MM-dd'T'00:00:00.000'Z'"),
         endDate: format(new Date(formData.endDate!), "yyyy-MM-dd'T'23:59:59.999'Z'"),
         attachmentUrl,
-        attachmentName
+        attachmentName,
+        createdAt: formData.createdAt || new Date().toISOString()
       };
 
       if (news) {
-        await fetch(`/api/news/${news.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
+        await updateDoc(doc(db, 'news', news.id), body);
       } else {
-        await fetch('/api/news', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
+        await addDoc(collection(db, 'news'), body);
       }
       onSaved();
     } catch (err) {
-      console.error(err);
-      alert('Error guardando la novedad');
+      handleFirestoreError(err, news ? OperationType.UPDATE : OperationType.CREATE, news ? `news/${news.id}` : `news`);
     } finally {
       setLoading(false);
     }
