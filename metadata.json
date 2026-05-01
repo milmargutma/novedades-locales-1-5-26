@@ -1,0 +1,8 @@
+{
+  "name": "Retail News Hub",
+  "description": "App web de novedades para locales retail con notificaciones push y dashboard de gestión.",
+  "requestFramePermissions": [
+    "notifications"
+  ],
+  "majorCapabilities": []
+}
