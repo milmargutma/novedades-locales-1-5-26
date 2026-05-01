@@ -34,7 +34,7 @@ service cloud.firestore {
              data.priority is string && data.priority.matches('^(verde|amarilla|roja)$') &&
              data.target is string && data.target.matches('^(local 4|local 9|administracion|todos)$') &&
              data.createdAt is string && data.createdAt.size() <= 50 &&
-             ( !('attachmentUrl' in data) || (data.attachmentUrl is string && data.attachmentUrl.size() <= 1000) ) &&
+             ( !('attachmentUrl' in data) || (data.attachmentUrl is string && data.attachmentUrl.size() <= 1500000) ) &&
              ( !('attachmentName' in data) || (data.attachmentName is string && data.attachmentName.size() <= 200) );
     }
 

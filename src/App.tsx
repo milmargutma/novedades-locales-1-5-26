@@ -74,6 +74,7 @@ export default function App() {
       try {
         await deleteDoc(doc(db, 'news', id));
       } catch (err) {
+        alert('Error al eliminar la novedad.');
         handleFirestoreError(err, OperationType.DELETE, `news/${id}`);
       }
     }
@@ -429,8 +430,8 @@ function NewsFormModal({ news, onClose, onSaved }: { news: News | null, onClose:
       let attachmentName = formData.attachmentName;
 
       if (file) {
-        if (file.size > 800000) {
-            alert('El archivo es demasiado grande. El máximo permitido es 800KB.');
+        if (file.size > 500000) {
+            alert('El archivo es demasiado grande. El máximo permitido es 500KB.');
             setLoading(false);
             return;
         }
@@ -444,14 +445,16 @@ function NewsFormModal({ news, onClose, onSaved }: { news: News | null, onClose:
         attachmentName = file.name;
       }
 
-      const body = {
+      const body: any = {
         ...formData,
         startDate: format(new Date(formData.startDate!), "yyyy-MM-dd'T'00:00:00.000'Z'"),
         endDate: format(new Date(formData.endDate!), "yyyy-MM-dd'T'23:59:59.999'Z'"),
-        attachmentUrl,
-        attachmentName,
         createdAt: formData.createdAt || new Date().toISOString()
       };
+      
+      if (attachmentUrl) body.attachmentUrl = attachmentUrl;
+      if (attachmentName) body.attachmentName = attachmentName;
+      delete body.id;
 
       if (news) {
         await updateDoc(doc(db, 'news', news.id), body);
@@ -460,6 +463,7 @@ function NewsFormModal({ news, onClose, onSaved }: { news: News | null, onClose:
       }
       onSaved();
     } catch (err) {
+      alert('Error guardando la novedad. Revisa la consola para más detalles.');
       handleFirestoreError(err, news ? OperationType.UPDATE : OperationType.CREATE, news ? `news/${news.id}` : `news`);
     } finally {
       setLoading(false);
