@@ -32,6 +32,7 @@ export default function App() {
   const [viewingNews, setViewingNews] = useState<News | null>(null);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [adminFilter, setAdminFilter] = useState<TargetLocal | 'all'>('all');
   const lastNewsCount = useRef<number>(0);
 
   // Read from Firebase in real-time
@@ -146,10 +147,19 @@ export default function App() {
     return inRange && targetsRole;
   };
 
-  const filteredNews = news.filter(n => 
-    n.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    n.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredNews = news.filter(n => {
+    const matchesSearch = n.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          n.description.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (!matchesSearch) return false;
+
+    if (role === 'administracion') {
+      if (adminFilter === 'all') return true;
+      return n.target === adminFilter || n.target === 'todos';
+    }
+
+    return true;
+  });
 
   return (
     <div className="h-screen w-full bg-slate-50 text-slate-900 font-sans flex overflow-hidden">
@@ -271,6 +281,16 @@ export default function App() {
               <div className="bg-white rounded-2xl border border-slate-200 flex flex-col overflow-hidden shadow-sm mb-12">
                 <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white">
                   <h3 className="font-semibold text-slate-800">Listado Maestro de Novedades</h3>
+                  <select 
+                    value={adminFilter}
+                    onChange={(e) => setAdminFilter(e.target.value as TargetLocal | 'all')}
+                    className="border border-slate-200 rounded-lg px-3 py-1.5 bg-slate-50 text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  >
+                    <option value="all">Todos los locales</option>
+                    <option value="local 4">Local 4</option>
+                    <option value="local 9">Local 9</option>
+                    <option value="administracion">Administración</option>
+                  </select>
                 </div>
                 
                 <div className="overflow-x-auto">
