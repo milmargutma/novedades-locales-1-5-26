@@ -7,6 +7,7 @@
       "properties": {
         "title": { "type": "string" },
         "description": { "type": "string" },
+        "author": { "type": "string" },
         "startDate": { "type": "string" },
         "endDate": { "type": "string" },
         "priority": { "type": "string", "enum": ["verde", "amarilla", "roja"] },
@@ -15,7 +16,7 @@
         "attachmentName": { "type": "string" },
         "createdAt": { "type": "string" }
       },
-      "required": ["title", "description", "startDate", "endDate", "priority", "target", "createdAt"]
+      "required": ["title", "description", "author", "startDate", "endDate", "priority", "target", "createdAt"]
     }
   },
   "firestore": {

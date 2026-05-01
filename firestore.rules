@@ -26,9 +26,10 @@ service cloud.firestore {
     }
 
     function isValidNews(data) {
-      return data.keys().hasAll(['title', 'description', 'startDate', 'endDate', 'priority', 'target', 'createdAt']) &&
+      return data.keys().hasAll(['title', 'description', 'author', 'startDate', 'endDate', 'priority', 'target', 'createdAt']) &&
              data.title is string && data.title.size() <= 200 &&
              data.description is string && data.description.size() <= 10000 &&
+             data.author is string && data.author.size() <= 100 &&
              data.startDate is string && data.startDate.size() <= 50 &&
              data.endDate is string && data.endDate.size() <= 50 &&
              data.priority is string && data.priority.matches('^(verde|amarilla|roja)$') &&
