@@ -26,7 +26,7 @@ service cloud.firestore {
     }
 
     function isValidNews(data) {
-      return data.keys().hasAll(['title', 'description', 'author', 'startDate', 'endDate', 'priority', 'target', 'createdAt']) &&
+      return data.keys().hasAll(['title', 'description', 'author', 'startDate', 'endDate', 'priority', 'target', 'createdAt', 'status']) &&
              data.title is string && data.title.size() <= 200 &&
              data.description is string && data.description.size() <= 10000 &&
              data.author is string && data.author.size() <= 100 &&
@@ -34,6 +34,7 @@ service cloud.firestore {
              data.endDate is string && data.endDate.size() <= 50 &&
              data.priority is string && data.priority.matches('^(verde|amarilla|roja)$') &&
              data.target is string && data.target.matches('^(local 4|local 9|administracion|todos)$') &&
+             data.status is string && data.status.matches('^(active|archived)$') &&
              data.createdAt is string && data.createdAt.size() <= 50 &&
              ( !('attachmentUrl' in data) || (data.attachmentUrl is string && data.attachmentUrl.size() <= 1500000) ) &&
              ( !('attachmentName' in data) || (data.attachmentName is string && data.attachmentName.size() <= 200) );

@@ -14,9 +14,10 @@
         "target": { "type": "string", "enum": ["local 4", "local 9", "administracion", "todos"] },
         "attachmentUrl": { "type": "string" },
         "attachmentName": { "type": "string" },
-        "createdAt": { "type": "string" }
+        "createdAt": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "archived"] }
       },
-      "required": ["title", "description", "author", "startDate", "endDate", "priority", "target", "createdAt"]
+      "required": ["title", "description", "author", "startDate", "endDate", "priority", "target", "createdAt", "status"]
     }
   },
   "firestore": {

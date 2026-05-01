@@ -8,6 +8,7 @@ import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDocs } fr
 
 type Priority = 'verde' | 'amarilla' | 'roja';
 type TargetLocal = 'local 4' | 'local 9' | 'administracion' | 'todos';
+type Status = 'active' | 'archived';
 
 interface News {
   id: string;
@@ -18,6 +19,7 @@ interface News {
   endDate: string;
   priority: Priority;
   target: TargetLocal;
+  status: Status;
   attachmentUrl?: string;
   attachmentName?: string;
   createdAt: string;
@@ -34,6 +36,7 @@ export default function App() {
   const [pushEnabled, setPushEnabled] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [adminFilter, setAdminFilter] = useState<TargetLocal | 'all'>('all');
+  const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
   const lastNewsCount = useRef<number>(0);
 
   // Read from Firebase in real-time
@@ -148,18 +151,31 @@ export default function App() {
     return inRange && targetsRole;
   };
 
+  const isActive = (n: News) => {
+    const now = new Date();
+    const end = parseISO(n.endDate);
+    return n.status === 'active' && now <= end;
+  };
+
   const filteredNews = news.filter(n => {
     const matchesSearch = n.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           n.description.toLowerCase().includes(searchQuery.toLowerCase());
     
     if (!matchesSearch) return false;
 
+    // View mode filter
+    if (viewMode === 'active') {
+       if (!isActive(n)) return false;
+    } else {
+       if (isActive(n)) return false;
+    }
+
     if (role === 'administracion') {
       if (adminFilter === 'all') return true;
       return n.target === adminFilter || n.target === 'todos';
     }
 
-    return true;
+    return n.target === 'todos' || n.target === role;
   });
 
   return (
@@ -282,16 +298,26 @@ export default function App() {
               <div className="bg-white rounded-2xl border border-slate-200 flex flex-col overflow-hidden shadow-sm mb-12">
                 <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white">
                   <h3 className="font-semibold text-slate-800">Listado Maestro de Novedades</h3>
-                  <select 
-                    value={adminFilter}
-                    onChange={(e) => setAdminFilter(e.target.value as TargetLocal | 'all')}
-                    className="border border-slate-200 rounded-lg px-3 py-1.5 bg-slate-50 text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  >
-                    <option value="all">Todos los locales</option>
-                    <option value="local 4">Local 4</option>
-                    <option value="local 9">Local 9</option>
-                    <option value="administracion">Administración</option>
-                  </select>
+                  <div className="flex gap-2">
+                    <select 
+                      value={viewMode}
+                      onChange={(e) => setViewMode(e.target.value as 'active' | 'archived')}
+                      className="border border-slate-200 rounded-lg px-3 py-1.5 bg-slate-50 text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    >
+                      <option value="active">Activas</option>
+                      <option value="archived">Históricas</option>
+                    </select>
+                    <select 
+                      value={adminFilter}
+                      onChange={(e) => setAdminFilter(e.target.value as TargetLocal | 'all')}
+                      className="border border-slate-200 rounded-lg px-3 py-1.5 bg-slate-50 text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    >
+                      <option value="all">Todos los locales</option>
+                      <option value="local 4">Local 4</option>
+                      <option value="local 9">Local 9</option>
+                      <option value="administracion">Administración</option>
+                    </select>
+                  </div>
                 </div>
                 
                 <div className="overflow-x-auto">
@@ -374,7 +400,7 @@ export default function App() {
           {/* User Cards View */}
           {role !== 'administracion' && (
             <div className="flex flex-col gap-4">
-              {filteredNews.filter(n => isActiveAndForRole(n, role)).map(item => (
+              {filteredNews.map(item => (
                 <div key={item.id} onDoubleClick={() => setViewingNews(item)} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-col md:flex-row md:items-center justify-between group hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer gap-4">
                   <div className="flex items-start gap-4 flex-1">
                     <div className="shrink-0 pt-1.5">
@@ -535,7 +561,8 @@ function NewsFormModal({ news, onClose, onSaved }: { news: News | null, onClose:
         ...formData,
         startDate: format(new Date(formData.startDate!), "yyyy-MM-dd'T'00:00:00.000'Z'"),
         endDate: format(new Date(formData.endDate!), "yyyy-MM-dd'T'23:59:59.999'Z'"),
-        createdAt: formData.createdAt || new Date().toISOString()
+        createdAt: formData.createdAt || new Date().toISOString(),
+        status: formData.status || 'active'
       };
       
       if (attachmentUrl) body.attachmentUrl = attachmentUrl;
@@ -652,6 +679,18 @@ function NewsFormModal({ news, onClose, onSaved }: { news: News | null, onClose:
                 <option value="administracion">Solo Adm.</option>
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Estado</label>
+            <select
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+              value={formData.status}
+              onChange={e => setFormData({...formData, status: e.target.value as Status})}
+            >
+              <option value="active">Activa</option>
+              <option value="archived">Archivada (Histórica)</option>
+            </select>
           </div>
 
           <div>
