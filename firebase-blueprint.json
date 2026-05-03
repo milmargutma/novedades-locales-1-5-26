@@ -8,6 +8,7 @@
         "title": { "type": "string" },
         "description": { "type": "string" },
         "author": { "type": "string" },
+        "authorUid": { "type": "string" },
         "startDate": { "type": "string" },
         "endDate": { "type": "string" },
         "priority": { "type": "string", "enum": ["verde", "amarilla", "roja"] },

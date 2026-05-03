@@ -3,7 +3,7 @@ import { format, isWithinInterval, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
 import { Bell, BellOff, Edit, Trash2, Plus, Download, Store, Shield, Paperclip, ChevronRight, LayoutDashboard, LogOut, FileText } from 'lucide-react';
-import { db, handleFirestoreError, OperationType } from './lib/firebase';
+import { db, auth, handleFirestoreError, OperationType } from './lib/firebase';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDocs } from 'firebase/firestore';
 
 type Priority = 'verde' | 'amarilla' | 'roja';
@@ -15,6 +15,7 @@ interface News {
   title: string;
   description: string;
   author: string;
+  authorUid: string;
   startDate: string;
   endDate: string;
   priority: Priority;
@@ -418,6 +419,16 @@ export default function App() {
                   </div>
                   
                   <div className="flex items-center gap-6 shrink-0 md:pl-6 md:border-l border-slate-100 mt-2 md:mt-0">
+                    {(role === 'administracion' || item.authorUid === auth.currentUser?.uid) && (
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => setIsEditing(item)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleDelete(item.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                     <div className="flex flex-col">
                       <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Vence</span>
                       <span className="text-xs text-slate-700 font-medium mt-0.5">
@@ -559,6 +570,7 @@ function NewsFormModal({ news, onClose, onSaved }: { news: News | null, onClose:
 
       const body: any = {
         ...formData,
+        authorUid: auth.currentUser?.uid || 'anonymous',
         startDate: format(new Date(formData.startDate!), "yyyy-MM-dd'T'00:00:00.000'Z'"),
         endDate: format(new Date(formData.endDate!), "yyyy-MM-dd'T'23:59:59.999'Z'"),
         createdAt: formData.createdAt || new Date().toISOString(),
