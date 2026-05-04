@@ -3,9 +3,8 @@ import { format, isWithinInterval, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
 import { Bell, BellOff, Edit, Trash2, Plus, Download, Store, Shield, Paperclip, ChevronRight, LayoutDashboard, LogOut, FileText } from 'lucide-react';
-import { db, auth, handleFirestoreError, OperationType } from './lib/firebase';
+import { db, handleFirestoreError, OperationType } from './lib/firebase';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDocs } from 'firebase/firestore';
-import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, User } from 'firebase/auth';
 
 type Priority = 'verde' | 'amarilla' | 'roja';
 type TargetLocal = 'local 4' | 'local 9' | 'administracion' | 'todos';
@@ -30,8 +29,14 @@ interface News {
 const ROLES: TargetLocal[] = ['local 4', 'local 9', 'administracion'];
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<TargetLocal | null>(null);
+  const [anonymousId] = useState(() => {
+    const saved = localStorage.getItem('anon_id');
+    if (saved) return saved;
+    const newId = Math.random().toString(36).substring(2, 15);
+    localStorage.setItem('anon_id', newId);
+    return newId;
+  });
   const [news, setNews] = useState<News[]>([]);
   const [isEditing, setIsEditing] = useState<News | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -41,23 +46,6 @@ export default function App() {
   const [adminFilter, setAdminFilter] = useState<TargetLocal | 'all'>('all');
   const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
   const lastNewsCount = useRef<number>(0);
-
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-    });
-    return () => unsub();
-  }, []);
-
-  const handleLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (err) {
-      console.error(err);
-      alert('Error al iniciar sesión con Google');
-    }
-  };
 
   // Read from Firebase in real-time
   useEffect(() => {
@@ -128,7 +116,7 @@ export default function App() {
     XLSX.writeFile(workbook, 'novedades_backup.xlsx');
   };
 
-  if (!user || !role) {
+  if (!role) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 font-sans text-slate-900">
         <div className="max-w-md w-full bg-white rounded-2xl border border-slate-200 shadow-sm p-8 space-y-8">
@@ -136,48 +124,28 @@ export default function App() {
             <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4">
               <Store className="w-8 h-8" />
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">RetailHub</h1>
-            <p className="mt-2 text-sm text-slate-500">
-              {!user ? 'Inicie sesión para continuar' : 'Seleccione su perfil para ingresar'}
-            </p>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Novedades</h1>
+            <p className="mt-2 text-sm text-slate-500">Seleccione su perfil para ingresar</p>
           </div>
-
-          {!user ? (
-            <button
-              onClick={handleLogin}
-              className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all font-medium text-slate-700 shadow-sm"
-            >
-              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
-              Continuar con Google
-            </button>
-          ) : (
-            <div className="space-y-3">
-              {ROLES.map(r => (
-                <button
-                  key={r}
-                  onClick={() => {
-                    setRole(r);
-                    requestNotificationPermission();
-                  }}
-                  className="w-full flex items-center justify-between px-6 py-4 border border-slate-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition-all group"
-                >
-                  <div className="flex items-center gap-3">
-                    {r === 'administracion' ? <Shield className="w-5 h-5 text-indigo-500" /> : <Store className="w-5 h-5 text-slate-400 group-hover:text-indigo-500" />}
-                    <span className="font-medium text-slate-700 group-hover:text-indigo-700 capitalize">{r}</span>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-indigo-500" />
-                </button>
-              ))}
-              
+          
+          <div className="space-y-3">
+            {ROLES.map(r => (
               <button
-                onClick={() => auth.signOut()}
-                className="w-full mt-4 flex items-center justify-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+                key={r}
+                onClick={() => {
+                  setRole(r);
+                  requestNotificationPermission();
+                }}
+                className="w-full flex items-center justify-between px-6 py-4 border border-slate-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition-all group"
               >
-                <LogOut className="w-4 h-4" />
-                Cerrar sesión ({user.email})
+                <div className="flex items-center gap-3">
+                  {r === 'administracion' ? <Shield className="w-5 h-5 text-indigo-500" /> : <Store className="w-5 h-5 text-slate-400 group-hover:text-indigo-500" />}
+                  <span className="font-medium text-slate-700 group-hover:text-indigo-700 capitalize">{r}</span>
+                </div>
+                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-indigo-500" />
               </button>
-            </div>
-          )}
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -459,7 +427,7 @@ export default function App() {
                   </div>
                   
                   <div className="flex items-center gap-6 shrink-0 md:pl-6 md:border-l border-slate-100 mt-2 md:mt-0">
-                    {(role === 'administracion' || item.authorUid === auth.currentUser?.uid) && (
+                    {(role === 'administracion' || item.authorUid === anonymousId) && (
                       <div className="flex items-center gap-2">
                         <button onClick={() => setIsEditing(item)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
                           <Edit className="w-4 h-4" />
@@ -500,6 +468,7 @@ export default function App() {
       {(isCreating || isEditing) && (
         <NewsFormModal
           news={isEditing}
+          anonymousId={anonymousId}
           onClose={() => { setIsCreating(false); setIsEditing(null); }}
           onSaved={() => { setIsCreating(false); setIsEditing(null); }}
         />
@@ -571,11 +540,11 @@ export default function App() {
   );
 }
 
-function NewsFormModal({ news, onClose, onSaved }: { news: News | null, onClose: () => void, onSaved: () => void }) {
+function NewsFormModal({ news, anonymousId, onClose, onSaved }: { news: News | null, anonymousId: string, onClose: () => void, onSaved: () => void }) {
   const [formData, setFormData] = useState<Partial<News>>(news || {
     title: '',
     description: '',
-    author: auth.currentUser?.displayName || '',
+    author: '',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0],
     priority: 'verde',
@@ -611,7 +580,7 @@ function NewsFormModal({ news, onClose, onSaved }: { news: News | null, onClose:
 
       const body: any = {
         ...formData,
-        authorUid: news ? news.authorUid : (auth.currentUser?.uid || 'anonymous'),
+        authorUid: news ? news.authorUid : anonymousId,
         startDate: format(new Date(formData.startDate!), "yyyy-MM-dd'T'00:00:00.000'Z'"),
         endDate: format(new Date(formData.endDate!), "yyyy-MM-dd'T'23:59:59.999'Z'"),
         createdAt: formData.createdAt || new Date().toISOString(),
