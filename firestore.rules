@@ -43,8 +43,7 @@ service cloud.firestore {
 
     match /news/{newsId} {
       allow read: if true; 
-      allow create: if isValidId(newsId) && isValidNews(incoming());
-      allow update, delete: if isValidId(newsId) && (existing().authorUid == incoming().authorUid);
+      allow create, update, delete: if isValidId(newsId);
     }
   }
 }

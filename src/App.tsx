@@ -193,7 +193,7 @@ export default function App() {
       <aside className="w-64 bg-white border-r border-slate-200 flex flex-col shrink-0">
         <div className="p-6 border-b border-slate-100 flex items-center gap-2 text-indigo-600 font-bold text-xl">
           <Store className="w-8 h-8" />
-          <span>RetailHub</span>
+          <span>Novedades</span>
         </div>
         
         <nav className="flex-1 p-4 space-y-2">
@@ -427,16 +427,14 @@ export default function App() {
                   </div>
                   
                   <div className="flex items-center gap-6 shrink-0 md:pl-6 md:border-l border-slate-100 mt-2 md:mt-0">
-                    {(role === 'administracion' || item.authorUid === anonymousId) && (
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => setIsEditing(item)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDelete(item.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setIsEditing(item)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDelete(item.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                     <div className="flex flex-col">
                       <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Vence</span>
                       <span className="text-xs text-slate-700 font-medium mt-0.5">
@@ -452,7 +450,7 @@ export default function App() {
                   </div>
                 </div>
               ))}
-              {filteredNews.filter(n => isActiveAndForRole(n, role)).length === 0 && (
+              {filteredNews.length === 0 && (
                 <div className="col-span-full py-16 flex flex-col items-center justify-center text-center bg-white rounded-2xl border border-slate-200 border-dashed">
                   <FileText className="w-12 h-12 text-slate-300 mb-4" />
                   <p className="text-slate-500 font-medium">{searchQuery ? "Sin resultados" : "Todo está al día"}</p>
