@@ -576,28 +576,41 @@ function NewsFormModal({ news, anonymousId, onClose, onSaved }: { news: News | n
         attachmentName = file.name;
       }
 
-      const body: any = {
+      const cleanBody = (obj: any) => {
+        const cleaned = { ...obj };
+        Object.keys(cleaned).forEach(key => {
+          if (cleaned[key] === undefined) delete cleaned[key];
+        });
+        return cleaned;
+      };
+
+      const body = cleanBody({
         ...formData,
-        authorUid: news ? news.authorUid : anonymousId,
+        authorUid: news?.authorUid || anonymousId,
         startDate: format(new Date(formData.startDate!), "yyyy-MM-dd'T'00:00:00.000'Z'"),
         endDate: format(new Date(formData.endDate!), "yyyy-MM-dd'T'23:59:59.999'Z'"),
         createdAt: formData.createdAt || new Date().toISOString(),
         status: formData.status || 'active'
-      };
+      });
       
       if (attachmentUrl) body.attachmentUrl = attachmentUrl;
       if (attachmentName) body.attachmentName = attachmentName;
       delete body.id;
 
-      if (news) {
-        await updateDoc(doc(db, 'news', news.id), body);
-      } else {
-        await addDoc(collection(db, 'news'), body);
+      try {
+        if (news) {
+          await updateDoc(doc(db, 'news', news.id), body);
+        } else {
+          await addDoc(collection(db, 'news'), body);
+        }
+        onSaved();
+      } catch (firestoreErr: any) {
+        console.error("Firestore error details:", firestoreErr);
+        handleFirestoreError(firestoreErr, news ? OperationType.UPDATE : OperationType.CREATE, news ? `news/${news.id}` : `news`);
       }
-      onSaved();
-    } catch (err) {
-      alert('Error guardando la novedad. Revisa la consola para más detalles.');
-      handleFirestoreError(err, news ? OperationType.UPDATE : OperationType.CREATE, news ? `news/${news.id}` : `news`);
+    } catch (err: any) {
+      console.error("Submit error:", err);
+      alert(`Error al guardar: ${err.message || 'Error desconocido'}`);
     } finally {
       setLoading(false);
     }
