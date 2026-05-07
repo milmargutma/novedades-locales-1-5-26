@@ -45,6 +45,8 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [adminFilter, setAdminFilter] = useState<TargetLocal | 'all'>('all');
   const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
+  const [sortBy, setSortBy] = useState<'startDate' | 'endDate' | 'title'>('startDate');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const lastNewsCount = useRef<number>(0);
 
   // Read from Firebase in real-time
@@ -101,19 +103,28 @@ export default function App() {
   }, []);
 
   const exportToExcel = () => {
-    const dataToExport = news.map(n => ({
-      Título: n.title,
-      Descripción: n.description,
-      'Fecha Inicio': format(parseISO(n.startDate), 'dd/MM/yyyy'),
-      'Fecha Fin': format(parseISO(n.endDate), 'dd/MM/yyyy'),
-      Prioridad: n.priority,
-      Destino: n.target,
-      Adjunto: n.attachmentUrl ? window.location.origin + n.attachmentUrl : ''
-    }));
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Novedades');
-    XLSX.writeFile(workbook, 'novedades_backup.xlsx');
+    try {
+      const dataToExport = sortedNews.map(n => ({
+        Título: n.title,
+        Descripción: n.description,
+        Autor: n.author,
+        'Fecha Inicio': format(parseISO(n.startDate), 'dd/MM/yyyy'),
+        'Fecha Fin': format(parseISO(n.endDate), 'dd/MM/yyyy'),
+        Prioridad: n.priority,
+        Destino: n.target,
+        Estado: n.status === 'active' ? 'Activa' : 'Archivada',
+        'Tiene Adjunto': n.attachmentUrl ? 'Sí' : 'No',
+        'Nombre Adjunto': n.attachmentName || ''
+      }));
+      
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Novedades');
+      XLSX.writeFile(workbook, `respaldo_novedades_${viewMode}_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      alert('Error al generar el archivo Excel. Por favor reintente.');
+    }
   };
 
   if (!role) {
@@ -185,6 +196,18 @@ export default function App() {
     }
 
     return n.target === 'todos' || n.target === role;
+  });
+
+  const sortedNews = [...filteredNews].sort((a, b) => {
+    let comparison = 0;
+    if (sortBy === 'title') {
+      comparison = a.title.localeCompare(b.title);
+    } else if (sortBy === 'startDate') {
+      comparison = parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime();
+    } else if (sortBy === 'endDate') {
+      comparison = parseISO(a.endDate).getTime() - parseISO(b.endDate).getTime();
+    }
+    return sortOrder === 'asc' ? comparison : -comparison;
   });
 
   return (
@@ -305,27 +328,58 @@ export default function App() {
 
               {/* Table Container */}
               <div className="bg-white rounded-2xl border border-slate-200 flex flex-col overflow-hidden shadow-sm mb-12">
-                <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white">
+                <div className="p-5 border-b border-slate-100 flex flex-wrap items-center justify-between bg-white gap-4">
                   <h3 className="font-semibold text-slate-800">Listado Maestro de Novedades</h3>
-                  <div className="flex gap-2">
-                    <select 
-                      value={viewMode}
-                      onChange={(e) => setViewMode(e.target.value as 'active' | 'archived')}
-                      className="border border-slate-200 rounded-lg px-3 py-1.5 bg-slate-50 text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    >
-                      <option value="active">Activas</option>
-                      <option value="archived">Históricas</option>
-                    </select>
-                    <select 
-                      value={adminFilter}
-                      onChange={(e) => setAdminFilter(e.target.value as TargetLocal | 'all')}
-                      className="border border-slate-200 rounded-lg px-3 py-1.5 bg-slate-50 text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    >
-                      <option value="all">Todos los locales</option>
-                      <option value="local 4">Local 4</option>
-                      <option value="local 9">Local 9</option>
-                      <option value="administracion">Administración</option>
-                    </select>
+                  <div className="flex flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-500 font-medium">Ver:</span>
+                      <select 
+                        value={viewMode}
+                        onChange={(e) => setViewMode(e.target.value as 'active' | 'archived')}
+                        className="border border-slate-200 rounded-lg px-3 py-1.5 bg-slate-50 text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      >
+                        <option value="active">Activas</option>
+                        <option value="archived">Históricas</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-500 font-medium">Local:</span>
+                      <select 
+                        value={adminFilter}
+                        onChange={(e) => setAdminFilter(e.target.value as TargetLocal | 'all')}
+                        className="border border-slate-200 rounded-lg px-3 py-1.5 bg-slate-50 text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      >
+                        <option value="all">Todos los locales</option>
+                        <option value="local 4">Local 4</option>
+                        <option value="local 9">Local 9</option>
+                        <option value="administracion">Administración</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-500 font-medium">Ordenar:</span>
+                      <select 
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value as 'startDate' | 'endDate' | 'title')}
+                        className="border border-slate-200 rounded-lg px-3 py-1.5 bg-slate-50 text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      >
+                        <option value="startDate">Fecha Inicio</option>
+                        <option value="endDate">Fecha Fin</option>
+                        <option value="title">Título</option>
+                      </select>
+                      <button 
+                        onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                        className="p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100"
+                        title={sortOrder === 'asc' ? 'Ascendente' : 'Descendente'}
+                      >
+                        {sortOrder === 'asc' ? (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path></svg>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4h13M3 8h9m-9 4h9m5-1v12m0 0l-4-4m4 4l4-4"></path></svg>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
                 
@@ -342,7 +396,7 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-sm bg-white">
-                      {filteredNews.map((item) => (
+                      {sortedNews.map((item) => (
                         <tr key={item.id} onDoubleClick={() => setViewingNews(item)} className="hover:bg-slate-50/50 transition-colors cursor-pointer">
                           <td className="px-6 py-4">
                             {item.priority === 'roja' && (
@@ -392,7 +446,7 @@ export default function App() {
                           </td>
                         </tr>
                       ))}
-                      {filteredNews.length === 0 && (
+                      {sortedNews.length === 0 && (
                         <tr>
                           <td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-500">
                             {searchQuery ? "No se encontraron resultados para la búsqueda." : "No hay novedades registradas en el sistema."}
@@ -409,7 +463,50 @@ export default function App() {
           {/* User Cards View */}
           {role !== 'administracion' && (
             <div className="flex flex-col gap-4">
-              {filteredNews.map(item => (
+              <div className="flex flex-wrap items-center justify-between mb-4 gap-4 px-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500 font-medium">Ordenar por:</span>
+                  <select 
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as 'startDate' | 'endDate' | 'title')}
+                    className="border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  >
+                    <option value="startDate">Fecha Inicio</option>
+                    <option value="endDate">Fecha Fin</option>
+                    <option value="title">Título</option>
+                  </select>
+                  <button 
+                    onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                    className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100 shadow-sm"
+                  >
+                    {sortOrder === 'asc' ? (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path></svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4h13M3 8h9m-9 4h9m5-1v12m0 0l-4-4m4 4l4-4"></path></svg>
+                    )}
+                  </button>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500 font-medium">Vista:</span>
+                  <div className="flex bg-white rounded-lg border border-slate-200 p-1 shadow-sm">
+                    <button 
+                      onClick={() => setViewMode('active')}
+                      className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${viewMode === 'active' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+                    >
+                      Activas
+                    </button>
+                    <button 
+                      onClick={() => setViewMode('archived')}
+                      className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${viewMode === 'archived' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+                    >
+                      Históricas
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {sortedNews.map(item => (
                 <div key={item.id} onDoubleClick={() => setViewingNews(item)} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-col md:flex-row md:items-center justify-between group hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer gap-4">
                   <div className="flex items-start gap-4 flex-1">
                     <div className="shrink-0 pt-1.5">
@@ -450,7 +547,7 @@ export default function App() {
                   </div>
                 </div>
               ))}
-              {filteredNews.length === 0 && (
+              {sortedNews.length === 0 && (
                 <div className="col-span-full py-16 flex flex-col items-center justify-center text-center bg-white rounded-2xl border border-slate-200 border-dashed">
                   <FileText className="w-12 h-12 text-slate-300 mb-4" />
                   <p className="text-slate-500 font-medium">{searchQuery ? "Sin resultados" : "Todo está al día"}</p>
